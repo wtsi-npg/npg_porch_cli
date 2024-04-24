@@ -33,10 +33,14 @@ jobs:
         run: |
           poetry run pytest
 
+      - name: Run import checker
+        run: |
+          poetry run isort --check .
+
       - name: Run code style checker
         run: |
           poetry run flake8
 
       - name: Run code formatter
         run: |
-          poetry run black --check src
+          poetry run black --check src tests
