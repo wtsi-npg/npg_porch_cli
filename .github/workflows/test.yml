@@ -32,3 +32,11 @@ jobs:
       - name: Run pytest
         run: |
           poetry run pytest
+
+      - name: Run code style checker
+        run |
+        poetry run flake8
+
+     - name: Run code formatter
+        run |
+        poetry run black --check src
