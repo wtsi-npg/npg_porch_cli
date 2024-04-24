@@ -1,7 +1,4 @@
-import pytest
-
 import npg_porch_cli.api as porchApi
-
 
 def test_addition():
 
