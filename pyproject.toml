@@ -17,6 +17,7 @@ requests = "^2.31.0"
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
 pyproject-flake8 = "^7.0.0"
+flake8-bugbear = "^24.4.0"
 pytest = "^7.1.1"
 isort = { version = "^5.10.1", extras = ["colors"] }
 
@@ -32,6 +33,8 @@ line_length = 88
 
 [tool.flake8]
 max-line-length = 88
+extend-select = ["B950"]
+extend-ignore = ["E501"]
 
 [tool.pytest.ini_options]
 addopts = [

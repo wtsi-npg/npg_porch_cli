@@ -23,7 +23,7 @@ import requests
 
 # Certification file for https requests
 # if we don't have one, we can set certfile = False
-certfile = "/usr/share/ca-certificates/sanger.ac.uk/Genome_Research_Ltd_Certificate_Authority-cert.pem"  # noqa: E501
+certfile = "/usr/share/ca-certificates/sanger.ac.uk/Genome_Research_Ltd_Certificate_Authority-cert.pem"  # noqa: B950
 
 # tokens from Porch
 admin_headers = {"Authorization": "Bearer a"}
