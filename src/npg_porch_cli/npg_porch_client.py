@@ -23,9 +23,7 @@ import requests
 
 # Certification file for https requests
 # if we don't have one, we can set certfile = False
-certfile = (
-    "/usr/share/ca-certificates/sanger.ac.uk/Genome_Research_Ltd_Certificate_Authority-cert.pem"
-)
+certfile = "/usr/share/ca-certificates/sanger.ac.uk/Genome_Research_Ltd_Certificate_Authority-cert.pem"  # noqa: E501
 
 # tokens from Porch
 admin_headers = {"Authorization": "Bearer a"}
@@ -56,7 +54,9 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.command == "list":
-    response = requests.get(args.baseurl + "/tasks", verify=certfile, headers=pipeline_headers)
+    response = requests.get(
+        args.baseurl + "/tasks", verify=certfile, headers=pipeline_headers
+    )
     if not response.ok:
         print(f'"{response.reason}" received from {response.url}')
         exit(1)
@@ -67,7 +67,9 @@ if args.command == "list":
             print(f"{p['task_input']}\t{p['status']}")
 
 if args.command == "plist":
-    response = requests.get(args.baseurl + "/pipelines", verify=certfile, headers=admin_headers)
+    response = requests.get(
+        args.baseurl + "/pipelines", verify=certfile, headers=admin_headers
+    )
     if not response.ok:
         print(f'"{response.reason}" received from {response.url}')
         exit(1)
