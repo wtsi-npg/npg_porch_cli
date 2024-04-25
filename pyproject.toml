@@ -16,8 +16,7 @@ requests = "^2.31.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
-flake8 = "^4.0.1"
-flake8-bugbear = "^18.2.0"
+pyproject-flake8 = "^7.0.0"
 pytest = "^7.1.1"
 isort = { version = "^5.10.1", extras = ["colors"] }
 
@@ -30,6 +29,9 @@ profile = "black"
 
 [tool.black]
 line_length = 100
+
+[tool.flake8]
+max-line-length = 100
 
 [tool.pytest.ini_options]
 addopts = [

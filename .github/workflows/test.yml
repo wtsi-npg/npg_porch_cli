@@ -39,7 +39,7 @@ jobs:
 
       - name: Run code style checker
         run: |
-          poetry run flake8
+          poetry run pflake8
 
       - name: Run code formatter
         run: |
