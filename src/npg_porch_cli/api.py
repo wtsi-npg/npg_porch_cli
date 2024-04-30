@@ -60,7 +60,7 @@ class PorchRequest:
     pipeline_url: str | None = field(default=None)
     pipeline_version: str | None = field(default=None)
 
-    def send(self, action: str, task_input: str | None, task_status: str | None):
+    def send(self, action: str, task_input: dict | None, task_status: str | None):
 
         if task_status is not None:
             task_status = task_status.upper()

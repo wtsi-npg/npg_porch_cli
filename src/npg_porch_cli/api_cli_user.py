@@ -20,6 +20,7 @@
 # this program. If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+import json
 
 from npg_porch_cli.api import PorchRequest
 
@@ -111,7 +112,11 @@ def run():
         pipeline_version=args.pipeline_version,
     )
 
+    parsed_json = None
+    if args.task_json is not None:
+        print(args.task_json)
+        parsed_json = json.loads(args.task_json)
     response = r.send(
-        action=args.action, task_input=args.task_json, task_status=args.status
+        action=args.action, task_input=parsed_json, task_status=args.status
     )
     print(response)
