@@ -15,3 +15,17 @@ Example of using a client API:
  pr = PorchRequest(porch_url="https://myporch.com")
  response = pr.send(action="list_pipelines")
 ```
+
+By default the client is set up to validate the server's CA certificate.
+If the server is using a custom CA certificate, set the path to the certificate.
+
+``` bash
+ export SSL_CERT_FILE=/path_to/my.pem
+ npg_porch_client list_pipelines --base_url https://myporch.com
+```
+
+It is possible, but not recommended, to disable this validation check.
+
+``` bash
+ npg_porch_client list_pipelines --base_url https://myporch.com --no-validate_ca_cert
+```

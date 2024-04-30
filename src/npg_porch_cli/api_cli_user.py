@@ -85,7 +85,11 @@ def run():
     )
     parser.add_argument("--base_url", type=str, required=True, help="Base URL")
     parser.add_argument(
-        "--certfile", type=str, help="Server CA certificate path, optional"
+        "--validate_ca_cert",
+        action=argparse.BooleanOptionalAction,
+        type=bool,
+        help="A flag instructing to validate server's CA SSL certificate, true by default",
+        default=True,
     )
     parser.add_argument(
         "--pipeline_url", type=str, help="Pipeline git project URL, optional"
@@ -101,7 +105,7 @@ def run():
 
     r = PorchRequest(
         porch_url=args.base_url,
-        ca_cert=args.certfile,
+        validate_ca_cert=args.validate_ca_cert,
         pipeline_name=args.pipeline,
         pipeline_url=args.pipeline_url,
         pipeline_version=args.pipeline_version,

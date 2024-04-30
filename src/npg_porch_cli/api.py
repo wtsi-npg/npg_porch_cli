@@ -55,7 +55,7 @@ class ServerErrorException(Exception):
 class PorchRequest:
 
     porch_url: str
-    ca_cert: str | None = field(default=None)
+    validate_ca_cert: bool = field(default=True)
     pipeline_name: str | None = field(default=None)
     pipeline_url: str | None = field(default=None)
     pipeline_version: str | None = field(default=None)
@@ -92,11 +92,8 @@ class PorchRequest:
         request_args = {
             "headers": self._get_request_headers(action),
             "timeout": CLIENT_TIMEOUT,
+            "verify": self.validate_ca_cert,
         }
-        if self.ca_cert is None:
-            request_args["verify"] = False
-        else:
-            request_args["cert"] = self.ca_cert
         if data is not None:
             request_args["json"] = data
 
