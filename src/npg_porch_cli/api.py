@@ -20,6 +20,7 @@
 
 import os
 from dataclasses import dataclass, field
+from urllib.parse import urljoin
 
 import requests
 
@@ -31,6 +32,9 @@ PORCH_CLIENT_ACTIONS = {
     "claim_task": "tasks/claim",
     "update_task": "tasks",
 }
+
+PORCH_OPENAPI_SCHEMA_URL = "api/v1/openapi.json"
+PORCH_TASK_STATUS_ENUM_NAME = "TaskStateEnum"
 
 PORCH_STATUSES = ["PENDING", "CLAIMED", "RUNNING", "DONE", "FAILED", "CANCELLED"]
 
@@ -60,10 +64,22 @@ class PorchRequest:
     pipeline_url: str | None = field(default=None)
     pipeline_version: str | None = field(default=None)
 
-    def send(self, action: str, task_input: dict | None, task_status: str | None):
+    def send(
+        self,
+        action: str,
+        task_input: dict | None = None,
+        task_status: str | None = None,
+    ) -> dict:
+        """
+        Sends a request to the porch API server to perform an action defined
+        by the `action` argument. Either of two optional arguments, if defined,
+        are used when constructing the request.
+
+        The server's response is returned as a dictionary.
+        """
 
         if task_status is not None:
-            task_status = task_status.upper()
+            task_status = self.validate_status(task_status=task_status)
         self._validate_request(
             action=action, task_input=task_input, task_status=task_status
         )
@@ -115,8 +131,46 @@ class PorchRequest:
 
         return response_obj
 
+    def validate_status(self, task_status: str) -> str:
+        """
+        Retrieves OpenAPI schema for the porch server and validates the given
+        task status value against the values listed in the schema document.
+
+        Returns a validated task status value. The case of this string can be
+        different from the input string.
+        """
+        url = urljoin(self.porch_url, PORCH_OPENAPI_SCHEMA_URL)
+        response = requests.request("GET", url)
+        if not response.ok:
+            raise ServerErrorException(
+                f"Failed to get OpenAPI Schema. "
+                f'Status code {response.status_code} "{response.reason}" '
+                f"received from {response.url}"
+            )
+
+        status = task_status.upper()
+        valid_statuses = []
+        error_message = f"Failed to get enumeration of valid statuses from {url}"
+        try:
+            valid_statuses = response.json()["components"]["schemas"][
+                PORCH_TASK_STATUS_ENUM_NAME
+            ]["enum"]
+        except Exception as e:
+            raise Exception(f"{error_message}: " + e.__str__())
+
+        if len(valid_statuses) == 0:
+            raise Exception(error_message)
+
+        if status not in valid_statuses:
+            raise InvalidValueException(
+                f"Task status '{task_status}' is not valid. "
+                "Valid statuses: " + ", ".join(sorted(valid_statuses))
+            )
+
+        return status
+
     def _generate_request_url(self, action: str):
-        return "/".join([self.porch_url, PORCH_CLIENT_ACTIONS[action]])
+        return urljoin(self.porch_url, PORCH_CLIENT_ACTIONS[action])
 
     def _get_token(self):
         if NPG_PORCH_TOKEN_ENV_VAR not in os.environ:
@@ -139,12 +193,6 @@ class PorchRequest:
                 "Valid actions: " + ", ".join(sorted(PORCH_CLIENT_ACTIONS.keys()))
             )
 
-        if task_status is not None and task_status not in PORCH_STATUSES:
-            raise InvalidValueException(
-                f"Task status '{task_status}' is not valid. "
-                "Valid statuses: " + ", ".join(PORCH_STATUSES)
-            )
-
         if action.startswith("list") is False:
             if (
                 self.pipeline_name is None
@@ -152,7 +200,7 @@ class PorchRequest:
                 or self.pipeline_version is None
             ):
                 raise InvalidValueException(
-                    f"Full pipeline details should be defined for action {action}"
+                    f"Full pipeline details should be defined for action '{action}'"
                 )
 
         if (
@@ -161,13 +209,13 @@ class PorchRequest:
             and task_input is None
         ):
             raise InvalidValueException(
-                f"task_input should be defined for action {action}"
+                f"task_input argument should be defined for action '{action}'"
             )
 
         if action == "update_task":
             if task_status is None:
                 raise InvalidValueException(
-                    f"task_status should be defined for action {action}"
+                    f"task_status argument should be defined for action '{action}'"
                 )
 
         return True
