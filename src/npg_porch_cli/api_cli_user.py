@@ -61,7 +61,7 @@ def run():
     be defined. In addition to this, for the `update_task` action `--status`
     should be defined.
 
-    NPG_PORCH_TOKEN environment variable should be set up to the value of
+    NPG_PORCH_TOKEN environment variable should be set to the value of
     either an admin or project-specific token.
 
     """

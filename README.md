@@ -5,6 +5,10 @@ with the [npg_porch](https://github.com/wtsi-npg/npg_porch) JSON API.
 
 Provides a Python script, `npg_porch_client`, and a Python client API.
 
+NPG_PORCH_TOKEN environment variable should be set to the value of either
+the admin or project-specific token. The token should be pre-registered in
+the database that is used by the npg_porch API server.
+
 Can be deployed with pip or poetry in a standard way.
 
 Example of using a client API:
@@ -20,6 +24,7 @@ By default the client is set up to validate the server's CA certificate.
 If the server is using a custom CA certificate, set the path to the certificate.
 
 ``` bash
+ export NPG_PORCH_TOKEN='my_token'
  export SSL_CERT_FILE=/path_to/my.pem
  npg_porch_client list_pipelines --base_url https://myporch.com
 ```
@@ -27,6 +32,7 @@ If the server is using a custom CA certificate, set the path to the certificate.
 It is possible, but not recommended, to disable this validation check.
 
 ``` bash
+ export NPG_PORCH_TOKEN='my_token'
  npg_porch_client list_pipelines --base_url https://myporch.com --no-validate_ca_cert
 ```
 
@@ -34,6 +40,7 @@ A valid JSON string is required for the `--task_json` script's argument, note
 double quotes in the example below.
 
 ``` bash
+ export NPG_PORCH_TOKEN='my_token'
  npg_porch_client update_task --base_url https://myporch.com \
    --pipeline Snakemake_Cardinal \
    --pipeline_url 'https://github.com/wtsi-npg/snakemake_cardinal' \
