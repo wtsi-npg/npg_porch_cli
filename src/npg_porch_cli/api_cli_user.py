@@ -22,7 +22,7 @@
 import argparse
 import json
 
-from npg_porch_cli.api import PORCH_CLIENT_ACTIONS, PorchRequest
+from npg_porch_cli.api import PORCH_CLIENT_ACTIONS, Pipeline, PorchAction, send
 
 
 def run():
@@ -75,7 +75,7 @@ def run():
         "action",
         type=str,
         help="Action to send to npg_porch server API",
-        choices=PORCH_CLIENT_ACTIONS.keys(),
+        choices=PORCH_CLIENT_ACTIONS,
     )
     parser.add_argument("--base_url", type=str, required=True, help="Base URL")
     parser.add_argument(
@@ -97,19 +97,17 @@ def run():
 
     args = parser.parse_args()
 
-    r = PorchRequest(
+    action = PorchAction(
         porch_url=args.base_url,
         validate_ca_cert=args.validate_ca_cert,
-        pipeline_name=args.pipeline,
-        pipeline_url=args.pipeline_url,
-        pipeline_version=args.pipeline_version,
+        action=args.action,
+        task_json=args.task_json,
+        task_status=args.status,
     )
+    pipeline = None
+    if args.pipeline is not None:
+        pipeline = Pipeline(
+            name=args.pipeline, uri=args.pipeline_url, version=args.pipeline_version
+        )
 
-    parsed_json = None
-    if args.task_json is not None:
-        print(args.task_json)
-        parsed_json = json.loads(args.task_json)
-    response = r.send(
-        action=args.action, task_input=parsed_json, task_status=args.status
-    )
-    print(response)
+    print(json.dumps(send(action=action, pipeline=pipeline), indent=2))
