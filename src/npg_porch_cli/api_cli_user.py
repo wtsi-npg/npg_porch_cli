@@ -22,7 +22,7 @@
 import argparse
 import json
 
-from npg_porch_cli.api import PORCH_CLIENT_ACTIONS, Pipeline, PorchAction, send
+from npg_porch_cli.api import Pipeline, PorchAction, list_client_actions, send
 
 
 def run():
@@ -75,7 +75,7 @@ def run():
         "action",
         type=str,
         help="Action to send to npg_porch server API",
-        choices=PORCH_CLIENT_ACTIONS,
+        choices=list_client_actions(),
     )
     parser.add_argument("--base_url", type=str, required=True, help="Base URL")
     parser.add_argument(

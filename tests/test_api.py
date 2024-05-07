@@ -10,6 +10,7 @@ from npg_porch_cli.api import (
     PorchAction,
     ServerErrorException,
     get_token,
+    list_client_actions,
     send,
 )
 
@@ -29,7 +30,7 @@ class MockPorchResponse:
         return self.json_data
 
 
-def test_header_generation(monkeypatch):
+def test_retrieving_token(monkeypatch):
 
     monkeypatch.delenv(var_name, raising=False)
     with pytest.raises(AuthException) as e:
@@ -40,6 +41,17 @@ def test_header_generation(monkeypatch):
     assert get_token() == "token_xyz"
 
     monkeypatch.undo()
+
+
+def test_listing_actions():
+    assert list_client_actions() == [
+        "add_pipeline",
+        "add_task",
+        "claim_task",
+        "list_pipelines",
+        "list_tasks",
+        "update_task",
+    ]
 
 
 def test_pipeline_class():

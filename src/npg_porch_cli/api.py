@@ -26,14 +26,6 @@ from urllib.parse import urljoin
 
 import requests
 
-PORCH_CLIENT_ACTIONS = [
-    "list_tasks",
-    "list_pipelines",
-    "add_pipeline",
-    "add_task",
-    "claim_task",
-    "update_task",
-]
 PORCH_OPENAPI_SCHEMA_URL = "api/v1/openapi.json"
 PORCH_TASK_STATUS_ENUM_NAME = "TaskStateEnum"
 
@@ -102,10 +94,10 @@ class PorchAction:
     def _validate_action_name(self):
         if self.action is None:
             raise InvalidValueException("'action' attribute should be defined")
-        if self.action not in PORCH_CLIENT_ACTIONS:
+        if self.action not in _PORCH_CLIENT_ACTIONS:
             raise InvalidValueException(
                 f"Action '{self.action}' is not valid. "
-                "Valid actions: " + ", ".join(sorted(PORCH_CLIENT_ACTIONS))
+                "Valid actions: " + ", ".join(list_client_actions())
             )
 
     def _validate_status(self) -> str | None:
@@ -157,31 +149,10 @@ def get_token():
     return os.environ[NPG_PORCH_TOKEN_ENV_VAR]
 
 
-def _send_request(validate_ca_cert: bool, url: str, method: str, data: dict = None):
+def list_client_actions() -> list:
+    """Returns a sorted list of currently implemented client actions."""
 
-    headers = {
-        "Authorization": "Bearer " + get_token(),
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-    request_args = {
-        "headers": headers,
-        "timeout": CLIENT_TIMEOUT,
-        "verify": validate_ca_cert,
-    }
-    if data is not None:
-        request_args["json"] = data
-
-    response = requests.request(method, url, **request_args)
-    if not response.ok:
-        action_name = inspect.stack()[1].function
-        raise ServerErrorException(
-            f"Action {action_name} failed. "
-            f'Status code {response.status_code} "{response.reason}" '
-            f"received from {response.url}"
-        )
-
-    return response.json()
+    return sorted(_PORCH_CLIENT_ACTIONS.keys())
 
 
 def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
@@ -193,17 +164,8 @@ def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
     The server's response is returned as a dictionary or as a list.
     """
 
-    functions = {
-        "list_tasks": list_tasks,
-        "list_pipelines": list_pipelines,
-        "add_pipeline": add_pipeline,
-        "add_task": add_task,
-        "claim_task": claim_task,
-        "update_task": update_task,
-    }
-
     # Get function's definition and then call the function.
-    function = functions[action.action]
+    function = _PORCH_CLIENT_ACTIONS[action.action]
     if action.action == "list_pipelines":
         return function(action=action)
     return function(action=action, pipeline=pipeline)
@@ -295,3 +257,40 @@ def update_task(action: PorchAction, pipeline: Pipeline):
             "status": action.task_status,
         },
     )
+
+
+_PORCH_CLIENT_ACTIONS = {
+    "list_tasks": list_tasks,
+    "list_pipelines": list_pipelines,
+    "add_pipeline": add_pipeline,
+    "add_task": add_task,
+    "claim_task": claim_task,
+    "update_task": update_task,
+}
+
+
+def _send_request(validate_ca_cert: bool, url: str, method: str, data: dict = None):
+
+    headers = {
+        "Authorization": "Bearer " + get_token(),
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    request_args = {
+        "headers": headers,
+        "timeout": CLIENT_TIMEOUT,
+        "verify": validate_ca_cert,
+    }
+    if data is not None:
+        request_args["json"] = data
+
+    response = requests.request(method, url, **request_args)
+    if not response.ok:
+        action_name = inspect.stack()[1].function
+        raise ServerErrorException(
+            f"Action {action_name} failed. "
+            f'Status code {response.status_code} "{response.reason}" '
+            f"received from {response.url}"
+        )
+
+    return response.json()
