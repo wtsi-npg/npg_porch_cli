@@ -40,10 +40,6 @@ class AuthException(Exception):
     pass
 
 
-class InvalidValueException(Exception):
-    pass
-
-
 class ServerErrorException(Exception):
     pass
 
@@ -57,12 +53,8 @@ class Pipeline:
 
     def __post_init__(self):
         "Post-constructor hook. Ensures all fields are defined."
-        try:
-            assert self.name and self.uri and self.version
-        except AssertionError:
-            raise InvalidValueException(
-                "Pipeline name, uri and version should be defined"
-            )
+        if not (self.name and self.uri and self.version):
+            raise TypeError("Pipeline name, uri and version should be defined")
 
 
 @dataclass(kw_only=True)
@@ -79,13 +71,11 @@ class PorchAction:
         "Post-constructor hook. Ensures integrity and validity of attributes."
 
         if self.porch_url is None:
-            raise InvalidValueException("'porch_url' attribute should be defined")
+            raise TypeError("'porch_url' attribute cannot be None")
 
         if task_json is not None:
             if self.task_input is not None:
-                raise InvalidValueException(
-                    "task_json and task_input cannot be both set"
-                )
+                raise ValueError("task_json and task_input cannot be both set")
             self.task_input = json.loads(task_json)
 
         self._validate_action_name()
@@ -93,9 +83,9 @@ class PorchAction:
 
     def _validate_action_name(self):
         if self.action is None:
-            raise InvalidValueException("'action' attribute should be defined")
+            raise TypeError("'action' attribute cannot be None")
         if self.action not in _PORCH_CLIENT_ACTIONS:
-            raise InvalidValueException(
+            raise ValueError(
                 f"Action '{self.action}' is not valid. "
                 "Valid actions: " + ", ".join(list_client_actions())
             )
@@ -135,7 +125,7 @@ class PorchAction:
             raise Exception(error_message)
 
         if status not in valid_statuses:
-            raise InvalidValueException(
+            raise ValueError(
                 f"Task status '{self.task_status}' is not valid. "
                 "Valid statuses: " + ", ".join(sorted(valid_statuses))
             )
@@ -214,9 +204,7 @@ def add_task(action: PorchAction, pipeline: Pipeline):
     "Registers a new task with the porch server."
 
     if action.task_input is None:
-        raise InvalidValueException(
-            f"task_input should be defined for action '{action.action}'"
-        )
+        raise TypeError(f"task_input cannot be None for action '{action.action}'")
     return _send_request(
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "tasks"),
@@ -240,13 +228,9 @@ def update_task(action: PorchAction, pipeline: Pipeline):
     "Updates a status of a task."
 
     if action.task_input is None:
-        raise InvalidValueException(
-            f"task_input should be defined for action '{action.action}'"
-        )
+        raise TypeError(f"task_input cannot be None for action '{action.action}'")
     if action.task_status is None:
-        raise InvalidValueException(
-            f"task_status should be defined for action '{action.action}'"
-        )
+        raise TypeError(f"task_status cannot be None for action '{action.action}'")
     return _send_request(
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "tasks"),

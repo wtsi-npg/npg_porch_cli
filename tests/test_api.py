@@ -5,7 +5,6 @@ import requests
 
 from npg_porch_cli.api import (
     AuthException,
-    InvalidValueException,
     Pipeline,
     PorchAction,
     ServerErrorException,
@@ -56,22 +55,22 @@ def test_listing_actions():
 
 def test_pipeline_class():
 
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(TypeError) as e:
         Pipeline(name=None, uri="http://some.come", version="1.0")
     assert e.value.args[0] == "Pipeline name, uri and version should be defined"
 
 
 def test_porch_action_class(monkeypatch):
 
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(TypeError) as e:
         PorchAction(porch_url=None, action="list_tasks")
-    assert e.value.args[0] == "'porch_url' attribute should be defined"
+    assert e.value.args[0] == "'porch_url' attribute cannot be None"
 
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(TypeError) as e:
         PorchAction(porch_url="http://some.come", action=None)
-    assert e.value.args[0] == "'action' attribute should be defined"
+    assert e.value.args[0] == "'action' attribute cannot be None"
 
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(ValueError) as e:
         PorchAction(porch_url=url, action="list_tools")
     assert (
         e.value.args[0] == "Action 'list_tools' is not valid. "
@@ -84,7 +83,7 @@ def test_porch_action_class(monkeypatch):
     assert pa.task_input is None
     assert pa.task_status is None
 
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(ValueError) as e:
         pa = PorchAction(
             porch_url=url,
             action="add_task",
@@ -126,7 +125,7 @@ def test_porch_action_class(monkeypatch):
             porch_url=url,
         )
         assert pa.task_status == "FAILED"
-        with pytest.raises(InvalidValueException) as e:
+        with pytest.raises(ValueError) as e:
             PorchAction(
                 task_status="Swimming",
                 action="update_task",
@@ -182,18 +181,18 @@ def test_request_validation():
     p = Pipeline(uri=url, version="1.0", name="p1")
 
     pa = PorchAction(porch_url=url, action="add_task")
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(TypeError) as e:
         send(action=pa, pipeline=p)
-    assert e.value.args[0] == "task_input should be defined for action 'add_task'"
+    assert e.value.args[0] == "task_input cannot be None for action 'add_task'"
 
     pa = PorchAction(porch_url=url, action="update_task")
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(TypeError) as e:
         send(action=pa, pipeline=p)
-    assert e.value.args[0] == "task_input should be defined for action 'update_task'"
+    assert e.value.args[0] == "task_input cannot be None for action 'update_task'"
     pa = PorchAction(porch_url=url, action="update_task", task_input={"id_run": 5})
-    with pytest.raises(InvalidValueException) as e:
+    with pytest.raises(TypeError) as e:
         send(action=pa, pipeline=p)
-    assert e.value.args[0] == "task_status should be defined for action 'update_task'"
+    assert e.value.args[0] == "task_status cannot be None for action 'update_task'"
 
 
 def test_sending_request(monkeypatch):
