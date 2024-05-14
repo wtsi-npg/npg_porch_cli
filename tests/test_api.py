@@ -5,9 +5,12 @@ import requests
 
 from npg_porch_cli.api import (
     AuthException,
-    InvalidValueException,
-    PorchRequest,
+    Pipeline,
+    PorchAction,
     ServerErrorException,
+    get_token,
+    list_client_actions,
+    send,
 )
 
 url = "http://some.com"
@@ -26,94 +29,78 @@ class MockPorchResponse:
         return self.json_data
 
 
-def test_request_validation():
+def test_retrieving_token(monkeypatch):
 
-    r = PorchRequest(porch_url=url)
+    monkeypatch.delenv(var_name, raising=False)
+    with pytest.raises(AuthException) as e:
+        get_token()
+    assert e.value.args[0] == "Authorization token is needed"
 
-    with pytest.raises(InvalidValueException) as e:
-        r._validate_request(action="list_tools", task_status=None, task_input=None)
+    monkeypatch.setenv(var_name, "token_xyz")
+    assert get_token() == "token_xyz"
+
+    monkeypatch.undo()
+
+
+def test_listing_actions():
+    assert list_client_actions() == [
+        "add_pipeline",
+        "add_task",
+        "claim_task",
+        "list_pipelines",
+        "list_tasks",
+        "update_task",
+    ]
+
+
+def test_pipeline_class():
+
+    with pytest.raises(TypeError) as e:
+        Pipeline(name=None, uri="http://some.come", version="1.0")
+    assert e.value.args[0] == "Pipeline name, uri and version should be defined"
+
+
+def test_porch_action_class(monkeypatch):
+
+    with pytest.raises(TypeError) as e:
+        PorchAction(porch_url=None, action="list_tasks")
+    assert e.value.args[0] == "'porch_url' attribute cannot be None"
+
+    with pytest.raises(TypeError) as e:
+        PorchAction(porch_url="http://some.come", action=None)
+    assert e.value.args[0] == "'action' attribute cannot be None"
+
+    with pytest.raises(ValueError) as e:
+        PorchAction(porch_url=url, action="list_tools")
     assert (
         e.value.args[0] == "Action 'list_tools' is not valid. "
         "Valid actions: add_pipeline, add_task, claim_task, list_pipelines, "
         "list_tasks, update_task"
     )
-    assert (
-        r._validate_request(action="list_tasks", task_status=None, task_input=None)
-        is True
-    )
 
-    with pytest.raises(InvalidValueException) as e:
-        r._validate_request(action="claim_task", task_status=None, task_input=None)
-    assert (
-        e.value.args[0]
-        == "Full pipeline details should be defined for action 'claim_task'"
-    )
-    r = PorchRequest(
+    pa = PorchAction(porch_url=url, action="list_tasks")
+    assert pa.validate_ca_cert is True
+    assert pa.task_input is None
+    assert pa.task_status is None
+
+    with pytest.raises(ValueError) as e:
+        pa = PorchAction(
+            porch_url=url,
+            action="add_task",
+            task_json='{"id_run": 5}',
+            task_input={"id_run": 5},
+        )
+        assert e.value.args[0] == "task_json and task_input cannot be both set"
+    pa = PorchAction(
+        validate_ca_cert=False,
         porch_url=url,
-        pipeline_name="p1",
-        pipeline_version="0.1",
-        pipeline_url="https//:p1.com",
+        action="add_task",
+        task_json='{"id_run": 5}',
     )
-    assert (
-        r._validate_request(action="claim_task", task_status=None, task_input=None)
-        is True
-    )
-
-    with pytest.raises(InvalidValueException) as e:
-        r._validate_request(action="add_task", task_status=None, task_input=None)
-    assert (
-        e.value.args[0] == "task_input argument should be defined for action 'add_task'"
-    )
-    assert (
-        r._validate_request(
-            action="add_task", task_status=None, task_input={"id_run": 5}
-        )
-        is True
-    )
-
-    with pytest.raises(InvalidValueException) as e:
-        r._validate_request(
-            action="update_task", task_status=None, task_input={"id_run": 5}
-        )
-    assert (
-        e.value.args[0]
-        == "task_status argument should be defined for action 'update_task'"
-    )
-    assert (
-        r._validate_request(
-            action="update_task", task_status="PENDING", task_input={"id_run": 5}
-        )
-        is True
-    )
-
-
-def test_url_generation():
-
-    r = PorchRequest(porch_url=url)
-    assert r._generate_request_url(action="list_tasks") == "/".join([url, "tasks"])
-
-
-def test_header_generation(monkeypatch):
-
-    r = PorchRequest(porch_url=url)
-
-    monkeypatch.delenv(var_name, raising=False)
-    with pytest.raises(AuthException) as e:
-        r._get_request_headers(action="list_tasks")
-    assert e.value.args[0] == "Authorization token is needed"
-
-    monkeypatch.setenv(var_name, "token_xyz")
-    assert r._get_request_headers(action="list_tasks") == {
-        "Authorization": "Bearer token_xyz"
-    }
-    assert r._get_request_headers(action="add_tasks") == {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer token_xyz",
-    }
-    monkeypatch.undo()
-
-
-def test_status_validation(monkeypatch):
+    assert pa.task_input == {"id_run": 5}
+    assert pa.validate_ca_cert is False
+    pa = PorchAction(porch_url=url, action="add_task", task_input={"id_run": 5})
+    assert pa.task_input == {"id_run": 5}
 
     with monkeypatch.context() as m:
 
@@ -124,11 +111,27 @@ def test_status_validation(monkeypatch):
             return r
 
         m.setattr(requests, "request", mock_get_200)
-        r = PorchRequest(porch_url=url)
-        assert r.validate_status("FAILED") == "FAILED"
-        assert r.validate_status("Failed") == "FAILED"
-        with pytest.raises(InvalidValueException) as e:
-            r.validate_status("Swimming")
+        pa = PorchAction(
+            task_status="FAILED",
+            action="update_task",
+            task_input='{"id_run": 5}',
+            porch_url=url,
+        )
+        assert pa.task_status == "FAILED"
+        pa = PorchAction(
+            task_status="FAILED",
+            action="update_task",
+            task_input='{"id_run": 5}',
+            porch_url=url,
+        )
+        assert pa.task_status == "FAILED"
+        with pytest.raises(ValueError) as e:
+            PorchAction(
+                task_status="Swimming",
+                action="update_task",
+                task_input='{"id_run": 5}',
+                porch_url=url,
+            )
         assert (
             e.value.args[0] == "Task status 'Swimming' is not valid. "
             "Valid statuses: CANCELLED, CLAIMED, DONE, FAILED, PENDING, RUNNING"
@@ -140,9 +143,13 @@ def test_status_validation(monkeypatch):
             return MockPorchResponse({"Error": "Not found"}, 404)
 
         mk.setattr(requests, "request", mock_get_404)
-        r = PorchRequest(porch_url=url)
         with pytest.raises(ServerErrorException) as e:
-            r.validate_status("FAILED")
+            PorchAction(
+                task_status="FAILED",
+                action="update_task",
+                task_input='{"id_run": 5}',
+                porch_url=url,
+            )
         assert (
             e.value.args[0] == "Failed to get OpenAPI Schema. Status code 404 "
             '"Some reason" received from http://some.com'
@@ -157,43 +164,55 @@ def test_status_validation(monkeypatch):
             )
 
         mkp.setattr(requests, "request", mock_get_200)
-        r = PorchRequest(porch_url=url)
         with pytest.raises(Exception) as e:
-            r.validate_status("FAILED")
+            PorchAction(
+                task_status="FAILED",
+                action="update_task",
+                task_input='{"id_run": 5}',
+                porch_url=url,
+            )
         assert e.value.args[0].startswith(
             f"Failed to get enumeration of valid statuses from {url}"
         )
 
 
+def test_request_validation():
+
+    p = Pipeline(uri=url, version="1.0", name="p1")
+
+    pa = PorchAction(porch_url=url, action="add_task")
+    with pytest.raises(TypeError) as e:
+        send(action=pa, pipeline=p)
+    assert e.value.args[0] == "task_input cannot be None for action 'add_task'"
+
+    pa = PorchAction(porch_url=url, action="update_task")
+    with pytest.raises(TypeError) as e:
+        send(action=pa, pipeline=p)
+    assert e.value.args[0] == "task_input cannot be None for action 'update_task'"
+    pa = PorchAction(porch_url=url, action="update_task", task_input={"id_run": 5})
+    with pytest.raises(TypeError) as e:
+        send(action=pa, pipeline=p)
+    assert e.value.args[0] == "task_status cannot be None for action 'update_task'"
+
+
 def test_sending_request(monkeypatch):
-    class MockPorchRequest(PorchRequest):
-        # Mock status validation.
-        def validate_status(self, task_status: str):
-            return task_status
 
-    r = MockPorchRequest(
-        porch_url=url,
-        pipeline_name="p1",
-        pipeline_version="0.1",
-        pipeline_url="https//:p1.com",
-    )
+    monkeypatch.delenv(var_name, raising=False)
+    monkeypatch.setenv(var_name, "MY_TOKEN")
 
-    task = {
-        "id_run": 40954,
-    }
+    def all_valid(*args, **kwargs):
+        return "PENDING"
+
+    monkeypatch.setattr(PorchAction, "_validate_status", all_valid)
+
+    p = Pipeline(uri=url, version="0.1", name="p1")
+    task = {"id_run": 5}
     response_data = {
-        "pipeline": {
-            "name": "p1",
-            "uri": "https//:p1.com",
-            "version": "0.1",
-        },
+        "pipeline": p,
         "task_input_id": "8d505b17b4f",
         "task_input": task,
         "status": "PENDING",
     }
-
-    monkeypatch.delenv(var_name, raising=False)
-    monkeypatch.setenv(var_name, "MY_TOKEN")
 
     with monkeypatch.context() as m:
 
@@ -201,7 +220,9 @@ def test_sending_request(monkeypatch):
             return MockPorchResponse(response_data, 200)
 
         m.setattr(requests, "request", mock_get_200)
-        assert r.send(action="add_task", task_input=task) == response_data
+
+        pa = PorchAction(porch_url=url, action="add_task", task_input=task)
+        assert send(action=pa, pipeline=p) == response_data
 
     with monkeypatch.context() as mk:
         response_data["status"] = "CLAIMED"
@@ -210,7 +231,9 @@ def test_sending_request(monkeypatch):
             return MockPorchResponse(response_data, 200)
 
         mk.setattr(requests, "request", mock_get_200)
-        assert r.send(action="claim_task") == response_data
+
+        pa = PorchAction(porch_url=url, action="claim_task")
+        assert send(action=pa, pipeline=p) == response_data
 
     with monkeypatch.context() as mkp:
         response_data["status"] = "DONE"
@@ -219,7 +242,8 @@ def test_sending_request(monkeypatch):
             return MockPorchResponse(response_data, 200)
 
         mkp.setattr(requests, "request", mock_get_200)
-        assert (
-            r.send(action="update_task", task_input=task, task_status="DONE")
-            == response_data
+
+        pa = PorchAction(
+            porch_url=url, action="update_task", task_input=task, task_status="DONE"
         )
+        assert send(action=pa, pipeline=p) == response_data

@@ -18,20 +18,13 @@
 # You should have received a copy of the GNU General Public License along with
 # this program. If not, see <http://www.gnu.org/licenses/>.
 
+import inspect
+import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import InitVar, asdict, dataclass, field
 from urllib.parse import urljoin
 
 import requests
-
-PORCH_CLIENT_ACTIONS = {
-    "list_tasks": "tasks",
-    "list_pipelines": "pipelines",
-    "add_pipeline": "pipelines",
-    "add_task": "tasks",
-    "claim_task": "tasks/claim",
-    "update_task": "tasks",
-}
 
 PORCH_OPENAPI_SCHEMA_URL = "api/v1/openapi.json"
 PORCH_TASK_STATUS_ENUM_NAME = "TaskStateEnum"
@@ -47,91 +40,57 @@ class AuthException(Exception):
     pass
 
 
-class InvalidValueException(Exception):
-    pass
-
-
 class ServerErrorException(Exception):
     pass
 
 
-@dataclass
-class PorchRequest:
+@dataclass(kw_only=True)
+class Pipeline:
+
+    name: str
+    uri: str
+    version: str
+
+    def __post_init__(self):
+        "Post-constructor hook. Ensures all fields are defined."
+        if not (self.name and self.uri and self.version):
+            raise TypeError("Pipeline name, uri and version should be defined")
+
+
+@dataclass(kw_only=True)
+class PorchAction:
 
     porch_url: str
+    action: str
     validate_ca_cert: bool = field(default=True)
-    pipeline_name: str | None = field(default=None)
-    pipeline_url: str | None = field(default=None)
-    pipeline_version: str | None = field(default=None)
+    task_json: InitVar[str | None] = field(default=None, repr=False)
+    task_input: dict = field(default=None)
+    task_status: str | None = field(default=None)
 
-    def send(
-        self,
-        action: str,
-        task_input: dict | None = None,
-        task_status: str | None = None,
-    ) -> dict:
-        """
-        Sends a request to the porch API server to perform an action defined
-        by the `action` argument. Either of two optional arguments, if defined,
-        are used when constructing the request.
+    def __post_init__(self, task_json):
+        "Post-constructor hook. Ensures integrity and validity of attributes."
 
-        The server's response is returned as a dictionary.
-        """
+        if self.porch_url is None:
+            raise TypeError("'porch_url' attribute cannot be None")
 
-        if task_status is not None:
-            task_status = self.validate_status(task_status=task_status)
-        self._validate_request(
-            action=action, task_input=task_input, task_status=task_status
-        )
+        if task_json is not None:
+            if self.task_input is not None:
+                raise ValueError("task_json and task_input cannot be both set")
+            self.task_input = json.loads(task_json)
 
-        method = "GET"
-        pipeline_data = {
-            "name": self.pipeline_name,
-            "uri": self.pipeline_url,
-            "version": self.pipeline_version,
-        }
-        data = None
+        self._validate_action_name()
+        self.task_status = self._validate_status()
 
-        if action == "update_task":
-            method = "PUT"
-            data = {
-                "pipeline": pipeline_data,
-                "task_input": task_input,
-                "status": task_status,
-            }
-        elif action.startswith("list") is False:
-            method = "POST"
-            data = pipeline_data
-            if action == "add_task":
-                data = {"pipeline": pipeline_data, "task_input": task_input}
-
-        request_args = {
-            "headers": self._get_request_headers(action),
-            "timeout": CLIENT_TIMEOUT,
-            "verify": self.validate_ca_cert,
-        }
-        if data is not None:
-            request_args["json"] = data
-
-        response = requests.request(
-            method, self._generate_request_url(action), **request_args
-        )
-        if not response.ok:
-            raise ServerErrorException(
-                f"Action {action} failed. "
-                f'Status code {response.status_code} "{response.reason}" '
-                f"received from {response.url}"
+    def _validate_action_name(self):
+        if self.action is None:
+            raise TypeError("'action' attribute cannot be None")
+        if self.action not in _PORCH_CLIENT_ACTIONS:
+            raise ValueError(
+                f"Action '{self.action}' is not valid. "
+                "Valid actions: " + ", ".join(list_client_actions())
             )
 
-        response_obj = response.json()
-        if action == "list_tasks" and self.pipeline_name is not None:
-            response_obj = [
-                o for o in response_obj if o["pipeline"]["name"] == self.pipeline_name
-            ]
-
-        return response_obj
-
-    def validate_status(self, task_status: str) -> str:
+    def _validate_status(self) -> str | None:
         """
         Retrieves OpenAPI schema for the porch server and validates the given
         task status value against the values listed in the schema document.
@@ -139,8 +98,12 @@ class PorchRequest:
         Returns a validated task status value. The case of this string can be
         different from the input string.
         """
+
+        if self.task_status is None:
+            return None
+
         url = urljoin(self.porch_url, PORCH_OPENAPI_SCHEMA_URL)
-        response = requests.request("GET", url)
+        response = requests.request("GET", url, verify=self.validate_ca_cert)
         if not response.ok:
             raise ServerErrorException(
                 f"Failed to get OpenAPI Schema. "
@@ -148,7 +111,7 @@ class PorchRequest:
                 f"received from {response.url}"
             )
 
-        status = task_status.upper()
+        status = self.task_status.upper()
         valid_statuses = []
         error_message = f"Failed to get enumeration of valid statuses from {url}"
         try:
@@ -162,60 +125,156 @@ class PorchRequest:
             raise Exception(error_message)
 
         if status not in valid_statuses:
-            raise InvalidValueException(
-                f"Task status '{task_status}' is not valid. "
+            raise ValueError(
+                f"Task status '{self.task_status}' is not valid. "
                 "Valid statuses: " + ", ".join(sorted(valid_statuses))
             )
 
         return status
 
-    def _generate_request_url(self, action: str):
-        return urljoin(self.porch_url, PORCH_CLIENT_ACTIONS[action])
 
-    def _get_token(self):
-        if NPG_PORCH_TOKEN_ENV_VAR not in os.environ:
-            raise AuthException("Authorization token is needed")
-        return os.environ[NPG_PORCH_TOKEN_ENV_VAR]
+def get_token():
+    if NPG_PORCH_TOKEN_ENV_VAR not in os.environ:
+        raise AuthException("Authorization token is needed")
+    return os.environ[NPG_PORCH_TOKEN_ENV_VAR]
 
-    def _get_request_headers(self, action: str):
-        headers = {"Authorization": "Bearer " + self._get_token()}
-        if action.startswith("list") is False:
-            headers["Content-Type"] = "application/json"
-        return headers
 
-    def _validate_request(
-        self, action: str, task_status: str | None, task_input: str | None
-    ):
+def list_client_actions() -> list:
+    """Returns a sorted list of currently implemented client actions."""
 
-        if action not in PORCH_CLIENT_ACTIONS:
-            raise InvalidValueException(
-                f"Action '{action}' is not valid. "
-                "Valid actions: " + ", ".join(sorted(PORCH_CLIENT_ACTIONS.keys()))
-            )
+    return sorted(_PORCH_CLIENT_ACTIONS.keys())
 
-        if action.startswith("list") is False:
-            if (
-                self.pipeline_name is None
-                or self.pipeline_url is None
-                or self.pipeline_version is None
-            ):
-                raise InvalidValueException(
-                    f"Full pipeline details should be defined for action '{action}'"
-                )
 
-        if (
-            action.endswith("task") is True
-            and action.startswith("claim") is False
-            and task_input is None
-        ):
-            raise InvalidValueException(
-                f"task_input argument should be defined for action '{action}'"
-            )
+def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
+    """
+    Sends a request to the porch API server to perform an action defined
+    by the `action` attribute of the `action` argument. The context of the
+    query is defined by the pipeline argument.
 
-        if action == "update_task":
-            if task_status is None:
-                raise InvalidValueException(
-                    f"task_status argument should be defined for action '{action}'"
-                )
+    The server's response is returned as a dictionary or as a list.
+    """
 
-        return True
+    # Get function's definition and then call the function.
+    function = _PORCH_CLIENT_ACTIONS[action.action]
+    if action.action == "list_pipelines":
+        return function(action=action)
+    return function(action=action, pipeline=pipeline)
+
+
+def list_pipelines(action: PorchAction) -> list:
+    "Returns a listing of all pipelines registered with the porch server."
+
+    return _send_request(
+        validate_ca_cert=action.validate_ca_cert,
+        url=urljoin(action.porch_url, "pipelines"),
+        method="GET",
+    )
+
+
+def list_tasks(action: PorchAction, pipeline: Pipeline = None) -> list:
+    """
+    In the pipeline argument is not defined, returns a listing of all tasks
+    registered with the porch server. If the pipeline argument is defined,
+    only tasks belonging to this pipeline are listed.
+    """
+
+    response_obj = _send_request(
+        validate_ca_cert=action.validate_ca_cert,
+        url=urljoin(action.porch_url, "tasks"),
+        method="GET",
+    )
+    if pipeline is not None:
+        pipeline_dict = asdict(pipeline)
+        response_obj = [o for o in response_obj if o["pipeline"] == pipeline_dict]
+    return response_obj
+
+
+def add_pipeline(action: PorchAction, pipeline: Pipeline):
+    "Registers a new pipeline with the porch server."
+
+    return _send_request(
+        validate_ca_cert=action.validate_ca_cert,
+        method="POST",
+        url=urljoin(action.porch_url, "pipelines"),
+        data=asdict(pipeline),
+    )
+
+
+def add_task(action: PorchAction, pipeline: Pipeline):
+    "Registers a new task with the porch server."
+
+    if action.task_input is None:
+        raise TypeError(f"task_input cannot be None for action '{action.action}'")
+    return _send_request(
+        validate_ca_cert=action.validate_ca_cert,
+        url=urljoin(action.porch_url, "tasks"),
+        method="POST",
+        data={"pipeline": asdict(pipeline), "task_input": action.task_input},
+    )
+
+
+def claim_task(action: PorchAction, pipeline: Pipeline):
+    "Claims a task that belongs to the previously registered pipeline."
+
+    return _send_request(
+        validate_ca_cert=action.validate_ca_cert,
+        url=urljoin(action.porch_url, "tasks/claim"),
+        method="POST",
+        data=asdict(pipeline),
+    )
+
+
+def update_task(action: PorchAction, pipeline: Pipeline):
+    "Updates a status of a task."
+
+    if action.task_input is None:
+        raise TypeError(f"task_input cannot be None for action '{action.action}'")
+    if action.task_status is None:
+        raise TypeError(f"task_status cannot be None for action '{action.action}'")
+    return _send_request(
+        validate_ca_cert=action.validate_ca_cert,
+        url=urljoin(action.porch_url, "tasks"),
+        method="PUT",
+        data={
+            "pipeline": asdict(pipeline),
+            "task_input": action.task_input,
+            "status": action.task_status,
+        },
+    )
+
+
+_PORCH_CLIENT_ACTIONS = {
+    "list_tasks": list_tasks,
+    "list_pipelines": list_pipelines,
+    "add_pipeline": add_pipeline,
+    "add_task": add_task,
+    "claim_task": claim_task,
+    "update_task": update_task,
+}
+
+
+def _send_request(validate_ca_cert: bool, url: str, method: str, data: dict = None):
+
+    headers = {
+        "Authorization": "Bearer " + get_token(),
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    request_args = {
+        "headers": headers,
+        "timeout": CLIENT_TIMEOUT,
+        "verify": validate_ca_cert,
+    }
+    if data is not None:
+        request_args["json"] = data
+
+    response = requests.request(method, url, **request_args)
+    if not response.ok:
+        action_name = inspect.stack()[1].function
+        raise ServerErrorException(
+            f"Action {action_name} failed. "
+            f'Status code {response.status_code} "{response.reason}" '
+            f"received from {response.url}"
+        )
+
+    return response.json()
