@@ -46,7 +46,6 @@ class ServerErrorException(Exception):
 
 @dataclass(kw_only=True)
 class Pipeline:
-
     name: str
     uri: str
     version: str
@@ -59,7 +58,6 @@ class Pipeline:
 
 @dataclass(kw_only=True)
 class PorchAction:
-
     porch_url: str
     action: str
     validate_ca_cert: bool = field(default=True)
@@ -164,7 +162,7 @@ def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
 def list_pipelines(action: PorchAction) -> list:
     "Returns a listing of all pipelines registered with the porch server."
 
-    return _send_request(
+    return send_request(
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "pipelines"),
         method="GET",
@@ -178,7 +176,7 @@ def list_tasks(action: PorchAction, pipeline: Pipeline = None) -> list:
     only tasks belonging to this pipeline are listed.
     """
 
-    response_obj = _send_request(
+    response_obj = send_request(
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "tasks"),
         method="GET",
@@ -192,7 +190,7 @@ def list_tasks(action: PorchAction, pipeline: Pipeline = None) -> list:
 def add_pipeline(action: PorchAction, pipeline: Pipeline):
     "Registers a new pipeline with the porch server."
 
-    return _send_request(
+    return send_request(
         validate_ca_cert=action.validate_ca_cert,
         method="POST",
         url=urljoin(action.porch_url, "pipelines"),
@@ -205,7 +203,7 @@ def add_task(action: PorchAction, pipeline: Pipeline):
 
     if action.task_input is None:
         raise TypeError(f"task_input cannot be None for action '{action.action}'")
-    return _send_request(
+    return send_request(
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "tasks"),
         method="POST",
@@ -216,7 +214,7 @@ def add_task(action: PorchAction, pipeline: Pipeline):
 def claim_task(action: PorchAction, pipeline: Pipeline):
     "Claims a task that belongs to the previously registered pipeline."
 
-    return _send_request(
+    return send_request(
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "tasks/claim"),
         method="POST",
@@ -231,7 +229,7 @@ def update_task(action: PorchAction, pipeline: Pipeline):
         raise TypeError(f"task_input cannot be None for action '{action.action}'")
     if action.task_status is None:
         raise TypeError(f"task_status cannot be None for action '{action.action}'")
-    return _send_request(
+    return send_request(
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "tasks"),
         method="PUT",
@@ -253,7 +251,8 @@ _PORCH_CLIENT_ACTIONS = {
 }
 
 
-def _send_request(validate_ca_cert: bool, url: str, method: str, data: dict = None):
+def send_request(validate_ca_cert: bool, url: str, method: str, data: dict = None):
+    """Sends an HTTPS request."""
 
     headers = {
         "Authorization": "Bearer " + get_token(),
