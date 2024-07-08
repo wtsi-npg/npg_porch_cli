@@ -18,7 +18,6 @@
 # You should have received a copy of the GNU General Public License along with
 # this program. If not, see <http://www.gnu.org/licenses/>.
 
-import inspect
 import json
 import os
 from dataclasses import InitVar, asdict, dataclass, field
@@ -251,14 +250,25 @@ _PORCH_CLIENT_ACTIONS = {
 }
 
 
-def send_request(validate_ca_cert: bool, url: str, method: str, data: dict = None):
+def send_request(
+    validate_ca_cert: bool,
+    url: str,
+    method: str,
+    data: dict = None,
+    auth_type: str | None = "token",
+):
     """Sends an HTTPS request."""
 
     headers = {
-        "Authorization": "Bearer " + get_token(),
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+    if auth_type is not None:
+        if auth_type == "token":
+            headers["Authorization"] = "Bearer " + get_token()
+        else:
+            raise ValueError(f"Authorization type {auth_type} is not implemented")
+
     request_args = {
         "headers": headers,
         "timeout": CLIENT_TIMEOUT,
@@ -269,9 +279,7 @@ def send_request(validate_ca_cert: bool, url: str, method: str, data: dict = Non
 
     response = requests.request(method, url, **request_args)
     if not response.ok:
-        action_name = inspect.stack()[1].function
         raise ServerErrorException(
-            f"Action {action_name} failed. "
             f'Status code {response.status_code} "{response.reason}" '
             f"received from {response.url}"
         )
