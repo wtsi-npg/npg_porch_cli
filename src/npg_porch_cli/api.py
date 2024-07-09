@@ -254,10 +254,50 @@ def send_request(
     validate_ca_cert: bool,
     url: str,
     method: str,
-    data: dict = None,
+    data: dict | None = None,
     auth_type: str | None = "token",
 ):
-    """Sends an HTTPS request."""
+    """Sends an HTTP request to a JSON API web service.
+
+    Raises ServerErrorException if the status code of the response is not
+    in the 200 – 299 range.
+
+    Args:
+      validate_ca_cert:
+        A boolean flag defining whether the server CA certificate
+        will be validated. If set to True, SSL_CERT_FILE environment
+        variable should be set.
+      url:
+        A URL to send the request to.
+      method:
+        The HTTP method to use (GET, POST, etc.)
+      data:
+        Optional payload for the request as a Python object.
+      auth_type:
+        Authorization type, defaults to 'token'. If no authorization
+        is required, set the value explicitly to None. Only the token
+        type authorization is implemented at the moment. For this type
+        of authorization to work, set NPG_PORCH_TOKEN environment
+        variable.
+
+    Example:
+
+      from npg_porch_cli import send_request
+
+      url = "https://some.com/api/fruit_types"
+      fruit_types = send_request(validate_ca_cert=True, url=url, method="GET", auth_type=None)
+
+      url = "https://some.com/api/add_fruit_type"
+      new_type = send_request(
+          validate_ca_cert=True,
+          url=url,
+          method="PUT",
+          data={"banana": {"taste": "sweet"}},
+      )
+
+    Returns:
+      Server's decoded reply.
+    """
 
     headers = {
         "Content-Type": "application/json",
