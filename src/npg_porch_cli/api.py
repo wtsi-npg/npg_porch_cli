@@ -230,7 +230,7 @@ def update_task(action: PorchAction, pipeline: Pipeline):
         raise TypeError(f"task_status cannot be None for action '{action.action}'")
     return send_request(
         validate_ca_cert=action.validate_ca_cert,
-        url=urljoin(action.porch_url, "tasks"),
+        url=urljoin(action.porch_url, "tasks/"),
         method="PUT",
         data={
             "pipeline": asdict(pipeline),
