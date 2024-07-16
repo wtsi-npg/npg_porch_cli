@@ -319,9 +319,20 @@ def send_request(
 
     response = requests.request(method, url, **request_args)
     if not response.ok:
-        raise ServerErrorException(
+        detail = ""
+        try:
+            data = response.json()
+            if "detail" in data:
+                detail = data["detail"]
+        except Exception:
+            pass
+
+        message = (
             f'Status code {response.status_code} "{response.reason}" '
             f"received from {response.url}"
         )
+        if detail:
+            message += f".\nDetail: {detail}"
+        raise ServerErrorException(message)
 
     return response.json()
