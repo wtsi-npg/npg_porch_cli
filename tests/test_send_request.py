@@ -1,5 +1,6 @@
 import pytest
 import requests
+
 from npg_porch_cli import send_request
 from npg_porch_cli.api import AuthException, ServerErrorException
 
