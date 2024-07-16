@@ -28,7 +28,18 @@ class MockResponseNotFound:
         self.ok = False
 
     def json(self):
-        return {"Error": "Not found"}
+        return {"detail": "Not found in our data"}
+
+
+class MockResponseNotFoundShort:
+    def __init__(self):
+        self.status_code = 404
+        self.reason = "NOT FOUND"
+        self.url = url
+        self.ok = False
+
+    def json(self):
+        return {}
 
 
 def mock_get_200(*args, **kwargs):
@@ -39,8 +50,11 @@ def mock_get_404(*args, **kwargs):
     return MockResponseNotFound()
 
 
-def test_sending_request(monkeypatch):
+def mock_get_404_short(*args, **kwargs):
+    return MockResponseNotFoundShort()
 
+
+def test_sending_request(monkeypatch):
     monkeypatch.delenv(var_name, raising=False)
 
     with pytest.raises(ValueError) as e:
@@ -66,6 +80,15 @@ def test_sending_request(monkeypatch):
 
     with monkeypatch.context() as m:
         m.setattr(requests, "request", mock_get_404)
+        with pytest.raises(ServerErrorException) as e:
+            send_request(validate_ca_cert=False, url=url, method="POST", data=json_data)
+        assert e.value.args[0] == (
+            'Status code 404 "NOT FOUND" received from '
+            f"{url}.\nDetail: Not found in our data"
+        )
+
+    with monkeypatch.context() as m:
+        m.setattr(requests, "request", mock_get_404_short)
         with pytest.raises(ServerErrorException) as e:
             send_request(validate_ca_cert=False, url=url, method="POST", data=json_data)
         assert e.value.args[0] == f'Status code 404 "NOT FOUND" received from {url}'
