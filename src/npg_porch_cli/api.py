@@ -28,7 +28,15 @@ import requests
 PORCH_OPENAPI_SCHEMA_URL = "api/v1/openapi.json"
 PORCH_TASK_STATUS_ENUM_NAME = "TaskStateEnum"
 
-PORCH_STATUSES = ["PENDING", "CLAIMED", "RUNNING", "DONE", "FAILED", "CANCELLED"]
+INITIAL_PORCH_STATUS = "PENDING"
+PORCH_STATUSES = [
+    INITIAL_PORCH_STATUS,
+    "CLAIMED",
+    "RUNNING",
+    "DONE",
+    "FAILED",
+    "CANCELLED",
+]
 
 CLIENT_TIMEOUT = (10, 60)
 
@@ -198,7 +206,10 @@ def add_pipeline(action: PorchAction, pipeline: Pipeline):
 
 
 def add_task(action: PorchAction, pipeline: Pipeline):
-    "Registers a new task with the porch server."
+    """Registers a new task with the porch server.
+
+    The new task is created with the default PENDING status.
+    """
 
     if action.task_input is None:
         raise TypeError(f"task_input cannot be None for action '{action.action}'")
@@ -206,7 +217,11 @@ def add_task(action: PorchAction, pipeline: Pipeline):
         validate_ca_cert=action.validate_ca_cert,
         url=urljoin(action.porch_url, "tasks"),
         method="POST",
-        data={"pipeline": asdict(pipeline), "task_input": action.task_input},
+        data={
+            "pipeline": asdict(pipeline),
+            "task_input": action.task_input,
+            "status": INITIAL_PORCH_STATUS,
+        },
     )
 
 
