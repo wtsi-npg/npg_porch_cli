@@ -138,25 +138,45 @@ class PorchAction:
         return status
 
 
-def get_token():
+def get_token() -> str:
+    """Gets the value of the porch token from the environment variable.
+
+    If the NPG_PORCH_TOKEN is not defined or assigned to am empty string,
+    raises AuthException.
+
+    Returns:
+      The token.
+    """
     if NPG_PORCH_TOKEN_ENV_VAR not in os.environ:
         raise AuthException("Authorization token is needed")
-    return os.environ[NPG_PORCH_TOKEN_ENV_VAR]
+    token = os.environ[NPG_PORCH_TOKEN_ENV_VAR]
+    if token == "":
+        raise AuthException("Authorization token is needed")
+
+    return token
 
 
-def list_client_actions() -> list:
+def list_client_actions() -> list[str]:
     """Returns a sorted list of currently implemented client actions."""
 
     return sorted(_PORCH_CLIENT_ACTIONS.keys())
 
 
 def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
-    """
+    """Sends a request to the porch API server.
+
     Sends a request to the porch API server to perform an action defined
     by the `action` attribute of the `action` argument. The context of the
     query is defined by the pipeline argument.
 
-    The server's response is returned as a dictionary or as a list.
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+      pipeline:
+        npg_porch_cli.api.Pipeline object
+
+    Returns:
+      The server's response is returned as a Python data structure.
     """
 
     # Get function's definition and then call the function.
@@ -167,7 +187,16 @@ def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
 
 
 def list_pipelines(action: PorchAction) -> list:
-    "Returns a listing of all pipelines registered with the porch server."
+    """Lists all pipelines registered with the porch server.
+
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+
+    Returns:
+        A list of dictionaries representing npg_porch_cli.api.Pipeline objects
+
+    """
 
     return send_request(
         validate_ca_cert=action.validate_ca_cert,
@@ -177,10 +206,21 @@ def list_pipelines(action: PorchAction) -> list:
 
 
 def list_tasks(action: PorchAction, pipeline: Pipeline = None) -> list:
-    """
-    In the pipeline argument is not defined, returns a listing of all tasks
-    registered with the porch server. If the pipeline argument is defined,
-    only tasks belonging to this pipeline are listed.
+    """Lists tasks.
+
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+      pipeline:
+        npg_porch_cli.api.Pipeline object, optional
+
+    Returns:
+      A list of Python objects, most likely dictionaries, representing registered
+      tasks.
+
+      If the pipeline argument is defined, only tasks belonging to this pipeline
+      are listed. Otherwise the list contains all tasks registered with the
+      porch server.
     """
 
     response_obj = send_request(
@@ -194,8 +234,18 @@ def list_tasks(action: PorchAction, pipeline: Pipeline = None) -> list:
     return response_obj
 
 
-def add_pipeline(action: PorchAction, pipeline: Pipeline):
-    "Registers a new pipeline with the porch server."
+def add_pipeline(action: PorchAction, pipeline: Pipeline) -> dict:
+    """Registers a new pipeline with the porch server.
+
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+      pipeline:
+        npg_porch_cli.api.Pipeline object
+
+    Returns:
+      A dictionary representing npg_porch_cli.api.Pipeline object
+    """
 
     return send_request(
         validate_ca_cert=action.validate_ca_cert,
@@ -208,7 +258,15 @@ def add_pipeline(action: PorchAction, pipeline: Pipeline):
 def add_task(action: PorchAction, pipeline: Pipeline):
     """Registers a new task with the porch server.
 
-    The new task is created with the default PENDING status.
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+      pipeline:
+        npg_porch_cli.api.Pipeline object
+
+    Returns:
+      A dictionary representing the new task. The status of the new task is
+      'PENDING'.
     """
 
     if action.task_input is None:
@@ -226,7 +284,17 @@ def add_task(action: PorchAction, pipeline: Pipeline):
 
 
 def claim_task(action: PorchAction, pipeline: Pipeline):
-    "Claims a task that belongs to the previously registered pipeline."
+    """Claims a task that belongs to the pipeline.
+
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+      pipeline:
+        npg_porch_cli.api.Pipeline object
+
+    Returns:
+      A dictionary representing the claimed task.
+    """
 
     return send_request(
         validate_ca_cert=action.validate_ca_cert,
@@ -237,7 +305,17 @@ def claim_task(action: PorchAction, pipeline: Pipeline):
 
 
 def update_task(action: PorchAction, pipeline: Pipeline):
-    "Updates a status of a task."
+    """Updates the status of an existing task.
+
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+      pipeline:
+        npg_porch_cli.api.Pipeline object
+
+    Returns:
+      A dictionary representing the updated task.
+    """
 
     if action.task_input is None:
         raise TypeError(f"task_input cannot be None for action '{action.action}'")
