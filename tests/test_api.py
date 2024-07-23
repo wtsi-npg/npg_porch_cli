@@ -30,8 +30,12 @@ class MockPorchResponse:
 
 
 def test_retrieving_token(monkeypatch):
-
     monkeypatch.delenv(var_name, raising=False)
+    with pytest.raises(AuthException) as e:
+        get_token()
+    assert e.value.args[0] == "Authorization token is needed"
+
+    monkeypatch.setenv(var_name, "")
     with pytest.raises(AuthException) as e:
         get_token()
     assert e.value.args[0] == "Authorization token is needed"
@@ -54,14 +58,12 @@ def test_listing_actions():
 
 
 def test_pipeline_class():
-
     with pytest.raises(TypeError) as e:
         Pipeline(name=None, uri="http://some.come", version="1.0")
     assert e.value.args[0] == "Pipeline name, uri and version should be defined"
 
 
 def test_porch_action_class(monkeypatch):
-
     with pytest.raises(TypeError) as e:
         PorchAction(porch_url=None, action="list_tasks")
     assert e.value.args[0] == "'porch_url' attribute cannot be None"
@@ -177,7 +179,6 @@ def test_porch_action_class(monkeypatch):
 
 
 def test_request_validation():
-
     p = Pipeline(uri=url, version="1.0", name="p1")
 
     pa = PorchAction(porch_url=url, action="add_task")
@@ -196,7 +197,6 @@ def test_request_validation():
 
 
 def test_sending_request(monkeypatch):
-
     monkeypatch.delenv(var_name, raising=False)
     monkeypatch.setenv(var_name, "MY_TOKEN")
 

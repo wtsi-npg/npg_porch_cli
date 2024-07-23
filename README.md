@@ -7,9 +7,9 @@ Provides a Python script, `npg_porch_client`, and a Python client API.
 
 NPG_PORCH_TOKEN environment variable should be set to the value of either
 the admin or project-specific token. The token should be pre-registered in
-the database that is used by the npg_porch API server.
+the database that is used by the `porch` API server.
 
-Can be deployed with pip or poetry in a standard way.
+The project can be deployed with pip or poetry in a standard way.
 
 Example of using a client API:
 
@@ -18,10 +18,27 @@ Example of using a client API:
  
  pr = PorchRequest(porch_url="https://myporch.com")
  response = pr.send(action="list_pipelines")
+ 
+ pr = PorchRequest(
+    porch_url="https://myporch.com",
+    pipeline_name="Snakemake_Cardinal",
+    pipeline_url="https://github.com/wtsi-npg/snakemake_cardinal",
+    pipeline_version="1.0",
+ )
+ response = pr.send(
+    action="update_task",
+    task_status="FAILED",
+    task_input={"id_run": 409, "sample": "Valxxxx", "id_study": "65"},
+ )
 ```
 
-By default the client is set up to validate the server's CA certificate.
-If the server is using a custom CA certificate, set the path to the certificate.
+By default the client validates the certificate of the server's certification
+authority (CA). If the server's certificate is signed by a custom CA, set the
+`SSL_CERT_FILE` environment variable to the path of the CA's certificate.
+Python versions starting from 3.11 seem to have increased security precautions
+when validating certificates of custom CAs. It might be necessary to set the
+`REQUESTS_CA_BUNDLE` environmental variable, see details
+[here](https://requests.readthedocs.io/en/latest/user/advanced/#ssl-cert-verification).
 
 ``` bash
  export NPG_PORCH_TOKEN='my_token'
@@ -47,22 +64,4 @@ double quotes in the example below.
    --pipeline_version 1.0 \
    --task_json '{"id_run": 409, "sample": "Valxxxx", "id_study": "65"}' \
    --status FAILED
-```
-
-If using the client API directly from Python, a dictionary should be used.
-
-``` python
- from npg_porch_cli.api import PorchRequest
- 
- pr = PorchRequest(
-    porch_url="https://myporch.com",
-    pipeline_name="Snakemake_Cardinal",
-    pipeline_url="https://github.com/wtsi-npg/snakemake_cardinal",
-    pipeline_version="1.0",
- )
- response = pr.send(
-    action="update_task",
-    task_status="FAILED",
-    task_input={"id_run": 409, "sample": "Valxxxx", "id_study": "65"},
- )
 ```
