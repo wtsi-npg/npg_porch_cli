@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "npg_porch_cli"
+version = "0.1.0"
+authors = [
+    "Marina Gourtovaia",
+    "Kieron Taylor",
+    "Jennifer Liddle",
+]
+description = "CLI client for communicating with npg_porch JSON API"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+
+[tool.poetry.scripts]
+npg_porch_client = "npg_porch_cli.api_cli_user:run" 
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.31.0"
+
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+pyproject-flake8 = "^7.0.0"
+flake8-bugbear = "^24.4.0"
+pytest = "^7.1.1"
+isort = { version = "^5.10.1", extras = ["colors"] }
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line_length = 88
+
+[tool.flake8]
+max-line-length = 88
+extend-select = ["B950"]
+extend-ignore = ["E501"]
+exclude = [
+    # No need to traverse our git directory
+    ".git",
+    # There's no value in checking cache directories
+    "__pycache__"
+]
+per-file-ignores = """
+        # Disable 'imported but unused'
+        __init__.py: F401
+    """
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
