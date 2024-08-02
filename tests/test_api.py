@@ -51,6 +51,7 @@ def test_listing_actions():
         "add_pipeline",
         "add_task",
         "claim_task",
+        "create_token",
         "list_pipelines",
         "list_tasks",
         "update_task",
@@ -76,8 +77,8 @@ def test_porch_action_class(monkeypatch):
         PorchAction(porch_url=url, action="list_tools")
     assert (
         e.value.args[0] == "Action 'list_tools' is not valid. "
-        "Valid actions: add_pipeline, add_task, claim_task, list_pipelines, "
-        "list_tasks, update_task"
+        "Valid actions: add_pipeline, add_task, claim_task, create_token, "
+        "list_pipelines, list_tasks, update_task"
     )
 
     pa = PorchAction(porch_url=url, action="list_tasks")
@@ -247,3 +248,29 @@ def test_sending_request(monkeypatch):
             porch_url=url, action="update_task", task_input=task, task_status="DONE"
         )
         assert send(action=pa, pipeline=p) == response_data
+
+    with monkeypatch.context() as mkp:
+        response_data = {
+            "name": "p1",
+            "description": "for my pipeline",
+            "token": "ccceddd450aaa",
+        }
+
+        def mock_get_200(*args, **kwargs):
+            return MockPorchResponse(response_data, 200)
+
+        mkp.setattr(requests, "request", mock_get_200)
+
+        pa = PorchAction(porch_url=url, action="create_token")
+
+        error_message = "Token description should be given"
+        with pytest.raises(TypeError) as e:
+            send(action=pa, pipeline=p)
+            assert e.value.args[0] == error_message
+        with pytest.raises(TypeError) as e:
+            send(action=pa, pipeline=p, description="")
+            assert e.value.args[0] == error_message
+
+        assert (
+            send(action=pa, pipeline=p, description="for my pipeline") == response_data
+        )

@@ -162,7 +162,9 @@ def list_client_actions() -> list[str]:
     return sorted(_PORCH_CLIENT_ACTIONS.keys())
 
 
-def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
+def send(
+    action: PorchAction, pipeline: Pipeline = None, description: str | None = None
+) -> dict | list:
     """Sends a request to the porch API server.
 
     Sends a request to the porch API server to perform an action defined
@@ -174,6 +176,8 @@ def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
         npg_porch_cli.api.PorchAction object
       pipeline:
         npg_porch_cli.api.Pipeline object
+      description:
+        A description for the new token, optional
 
     Returns:
       The server's response is returned as a Python data structure.
@@ -183,6 +187,8 @@ def send(action: PorchAction, pipeline: Pipeline = None) -> dict | list:
     function = _PORCH_CLIENT_ACTIONS[action.action]
     if action.action == "list_pipelines":
         return function(action=action)
+    elif action.action == "create_token":
+        return function(action=action, pipeline=pipeline, description=description)
     return function(action=action, pipeline=pipeline)
 
 
@@ -333,6 +339,31 @@ def update_task(action: PorchAction, pipeline: Pipeline):
     )
 
 
+def create_token(action: PorchAction, pipeline: Pipeline, description: str):
+    """Creates a new token for the pipeline.
+
+    Args:
+      action:
+        npg_porch_cli.api.PorchAction object
+      pipeline:
+        npg_porch_cli.api.Pipeline object
+      description:
+        A short token description
+
+    Returns:
+      A dictionary containing a new token.
+    """
+
+    if not description:
+        raise TypeError("Token description should be given")
+
+    return send_request(
+        validate_ca_cert=action.validate_ca_cert,
+        url=urljoin(action.porch_url, f"pipelines/{pipeline.name}/token/{description}"),
+        method="POST",
+    )
+
+
 _PORCH_CLIENT_ACTIONS = {
     "list_tasks": list_tasks,
     "list_pipelines": list_pipelines,
@@ -340,6 +371,7 @@ _PORCH_CLIENT_ACTIONS = {
     "add_task": add_task,
     "claim_task": claim_task,
     "update_task": update_task,
+    "create_token": create_token,
 }
 
 

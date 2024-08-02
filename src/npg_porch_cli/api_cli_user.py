@@ -43,6 +43,7 @@ def run():
         list_tasks
         list_pipelines
         add_pipeline
+        create_token
         add_task
         claim_task
         update_task
@@ -54,12 +55,14 @@ def run():
     `--pipeline_name` is defined, `list_tasks` returns a list of tasks for
     this pipeline, otherwise all registered tasks are returned.
 
-    All non-list actions require all `--pipeline`, `pipeline_url` and
+    All non-list actions require `--pipeline`, `pipeline_url` and
     `--pipeline_version` defined.
 
     The `add_task` and `update_task` actions require the `--task_json` to
     be defined. In addition to this, for the `update_task` action `--status`
     should be defined.
+
+    The `create_token` action requires that the `--description` is defined.
 
     NPG_PORCH_TOKEN environment variable should be set to the value of
     either an admin or project-specific token.
@@ -94,6 +97,7 @@ def run():
     parser.add_argument("--pipeline", type=str, help="Pipeline name, optional")
     parser.add_argument("--task_json", type=str, help="Task as JSON, optional")
     parser.add_argument("--status", type=str, help="New status to set, optional")
+    parser.add_argument("--description", type=str, help="Token description, optional")
 
     args = parser.parse_args()
 
@@ -110,4 +114,9 @@ def run():
             name=args.pipeline, uri=args.pipeline_url, version=args.pipeline_version
         )
 
-    print(json.dumps(send(action=action, pipeline=pipeline), indent=2))
+    print(
+        json.dumps(
+            send(action=action, pipeline=pipeline, description=args.description),
+            indent=2,
+        )
+    )
