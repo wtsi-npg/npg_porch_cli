@@ -171,6 +171,8 @@ def send(
     by the `action` attribute of the `action` argument. The context of the
     query is defined by the pipeline argument.
 
+    See also send_request for SSL validation guidance
+
     Args:
       action:
         npg_porch_cli.api.PorchAction object
@@ -390,8 +392,8 @@ def send_request(
     Args:
       validate_ca_cert:
         A boolean flag defining whether the server CA certificate
-        will be validated. If set to True, SSL_CERT_FILE environment
-        variable should be set.
+        will be validated. If set to True, REQUESTS_CA_BUNDLE environment
+        variable should be set, for example to /etc/ssl/certs/ca-certificates.crt
       url:
         A URL to send the request to.
       method:
