@@ -16,22 +16,20 @@ def test_conf_obj():
     assert config_obj.pipeline_name == "test_pipeline"
     assert config_obj.pipeline_version == "9.9.9"
 
-    with raises(Exception):
+    with raises(KeyError, match="ABSENT"):
         PorchClientConfig.from_config_file(
             "tests/data/conf.ini", conf_file_section="ABSENT"
         )
 
-    with raises(Exception):
+    with raises(FileNotFoundError, match="No such file or directory: 'notafile'"):
         PorchClientConfig.from_config_file("notafile", conf_file_section="ABSENT")
 
-    with raises(TypeError) as e:
+    with raises(TypeError, match="unexpected keyword argument 'logging'"):
         PorchClientConfig.from_config_file(
             "tests/data/conf.ini", conf_file_section="STUFF"
         )
-    assert e.match("unexpected keyword argument 'logging'")
 
-    with raises(Exception) as e:
+    with raises(TypeError, match="missing 2 required keyword-only arguments"):
         PorchClientConfig.from_config_file(
             "tests/data/conf.ini", conf_file_section="PARTIALPORCH"
         )
-    assert e.match("missing 2 required keyword-only arguments")
