@@ -11,8 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 * Added .github/dependabot.yml file to auto-update GitHub actions
 * Implemented the `create_token` action. Provided the caller has an admin token,
   this action generates and returns a new pipeline-specific token.
-* Brought some semi-standard Porch client config over from npg_notifications to
-  improve reusability
+* Used npg-python-lib to read Porch config
 
 ## [0.1.0] - 2024-07-23
 
