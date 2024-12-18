@@ -16,6 +16,7 @@ npg_porch_client = "npg_porch_cli.api_cli_user:run"
 [tool.poetry.dependencies]
 python = "^3.10"
 requests = "^2.31.0"
+npg-python-lib = { git="https://github.com/wtsi-npg/npg-python-lib", tag="0.3.4"}
 
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
