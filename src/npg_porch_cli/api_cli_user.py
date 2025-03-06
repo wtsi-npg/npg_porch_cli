@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2022, 2024 Genome Research Ltd.
+# Copyright (C) 2022, 2024, 2025 Genome Research Ltd.
 #
 # Author: Jennifer Liddle <js10@sanger.ac.uk>
 #
@@ -95,17 +95,27 @@ def run():
         "--pipeline_version", type=str, help="Pipeline version, optional"
     )
     parser.add_argument("--pipeline", type=str, help="Pipeline name, optional")
-    parser.add_argument("--task_json", type=str, help="Task as JSON, optional")
+    xor_options = parser.add_mutually_exclusive_group()
+    xor_options.add_argument("--task_json", type=str, help="Task as JSON, optional")
+    xor_options.add_argument(
+        "--task_file", type=str, help="A Porch task written to disk in JSON format"
+    )
     parser.add_argument("--status", type=str, help="New status to set, optional")
     parser.add_argument("--description", type=str, help="Token description, optional")
 
     args = parser.parse_args()
 
+    if args.task_file:
+        with open(args.task_file) as fh:
+            task_json = fh.read()
+    else:
+        task_json = args.task_json
+
     action = PorchAction(
         porch_url=args.base_url,
         validate_ca_cert=args.validate_ca_cert,
         action=args.action,
-        task_json=args.task_json,
+        task_json=task_json,
         task_status=args.status,
     )
     pipeline = None
