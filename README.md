@@ -15,10 +15,10 @@ Example of using a client API:
 
 ``` python
  from npg_porch_cli.api import PorchRequest
- 
+
  pr = PorchRequest(porch_url="https://myporch.com")
  response = pr.send(action="list_pipelines")
- 
+
  pr = PorchRequest(
     porch_url="https://myporch.com",
     pipeline_name="Snakemake_Cardinal",
@@ -64,4 +64,10 @@ double quotes in the example below.
    --pipeline_version 1.0 \
    --task_json '{"id_run": 409, "sample": "Valxxxx", "id_study": "65"}' \
    --status FAILED
+```
+
+The task definition JSON can also be provided via a file name.
+
+```bash
+npg_porch_client ... --task_file task.json
 ```
