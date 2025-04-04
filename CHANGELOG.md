@@ -4,6 +4,12 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.1] - 2025-04-04
+
+### Changed
+
+* Updated dependencies: upgraded npg_python_lib to version 1.0.0
+
 ## [0.3.0] - 2025-03-06
 
 ### Added
