@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "npg_porch_cli"
-version = "0.3.2"
+version = "0.3.3"
 authors = [
     "Marina Gourtovaia",
     "Kieron Taylor",
