@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os import R_OK, access
 from os.path import isfile
 
@@ -15,7 +15,7 @@ class PorchClientConfig:
     pipeline_name: str
     pipeline_uri: str
     pipeline_version: str
-    npg_porch_token: str
+    npg_porch_token: str = field(repr=False)
 
 
 def get_config_data(

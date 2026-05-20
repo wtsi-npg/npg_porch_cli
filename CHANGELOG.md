@@ -4,6 +4,12 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.3] - 2026-05-20
+
+### Fixed
+
+* Stop logging secrets
+
 ## [0.3.2] - 2026-05-01
 
 ### Changed
