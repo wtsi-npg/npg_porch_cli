@@ -1,21 +1,21 @@
-from dataclasses import dataclass, field
+from dataclasses import field
 from os import R_OK, access
 from os.path import isfile
 
-from npg.conf import IniData
+from npg.conf import IniData, config_class
 
 
-@dataclass(frozen=True, kw_only=True)
+@config_class(kw_only=True)
 class PorchClientConfig:
     """
     Suggested config file content for interacting with a Porch server instance
     """
 
-    api_url: str
-    pipeline_name: str
-    pipeline_uri: str
-    pipeline_version: str
-    npg_porch_token: str = field(repr=False)
+    api_url: str = field(repr=True)
+    pipeline_name: str = field(repr=True)
+    pipeline_uri: str = field(repr=True)
+    pipeline_version: str = field(repr=True)
+    npg_porch_token: str
 
 
 def get_config_data(
