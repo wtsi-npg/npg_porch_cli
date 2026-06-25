@@ -4,6 +4,12 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Changed
+
+* Use config_class where appropriate (secrets already not logged, provides example)
+
 ## [0.3.3] - 2026-05-20
 
 ### Fixed
