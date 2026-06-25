@@ -6,9 +6,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.3.4] - 2026-05-20
+
 ### Changed
 
 * Use config_class where appropriate (secrets already not logged, provides example)
+* Upgraded npg-python-lib to 2.1.0
 
 ## [0.3.3] - 2026-05-20
 
